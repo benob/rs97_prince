@@ -5,7 +5,7 @@
 
 // Enable or disable fading.
 // Fading used to be very buggy, but now it works correctly.
-#define USE_FADE
+//#define USE_FADE
 
 // Enable or disable the potions level. (copy protection)
 //#define USE_COPYPROT

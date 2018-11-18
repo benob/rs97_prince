@@ -1436,7 +1436,7 @@ void init_digi() {
 	desired = (SDL_AudioSpec *)malloc(sizeof(SDL_AudioSpec));
 	memset(desired, 0, sizeof(SDL_AudioSpec));
 	desired->freq = digi_samplerate; //buffer->digi.sample_rate;
-	desired->format = AUDIO_U8;
+	desired->format = AUDIO_S16;
 	desired->channels = 1;
 	//desired->samples = buffer->digi.sample_count;
 	desired->samples = /*4096*/ /*512*/ 256;
@@ -1508,6 +1508,7 @@ sound_buffer_type* load_sound(int index) {
 				Mix_Chunk* chunk = Mix_LoadWAV(filename);
 				if (chunk == NULL) {
 					sdlperror("Mix_LoadWAV");
+                    printf("error loading sound file %s\n", filename); 
 					continue;
 				}
 				//printf("Loaded sound from %s\n", filename);
@@ -1560,7 +1561,7 @@ void __pascal far play_digi_sound(sound_buffer_type far *buffer) {
 	SDL_AudioCVT cvt;
 	memset(&cvt, 0, sizeof(cvt));
 	int result = SDL_BuildAudioCVT(&cvt,
-		AUDIO_U8, 1, buffer->digi.sample_rate,
+		AUDIO_S16, 1, buffer->digi.sample_rate,
 		digi_audiospec->format, digi_audiospec->channels, digi_audiospec->freq
 	);
 	// The case of result == 0 is undocumented, but it may occur.
@@ -1690,7 +1691,8 @@ void __pascal far set_gr_mode(byte grmode) {
 	Uint32 flags = 0;
 	int fullscreen = check_param("full") != 0;
 	if (fullscreen) flags |= SDL_FULLSCREEN;
-	onscreen_surface_ = SDL_SetVideoMode(320, 200, 24, flags);
+	//onscreen_surface_ = SDL_SetVideoMode(320, 200, 24, flags);
+	onscreen_surface_ = SDL_SetVideoMode(320, 240, 16, SDL_FULLSCREEN | SDL_SWSURFACE | SDL_DOUBLEBUF);
 	if (onscreen_surface_ == NULL) {
 		sdlperror("SDL_SetVideoMode");
 		quit(1);
@@ -2120,7 +2122,7 @@ image_type far * __pascal far method_6_blit_img_to_scr(image_type far *image,int
 
 // seg009:68CC
 void far *__pascal method_7_alloc(int size) {
-	if (size >= 0xFFFE) {
+	if (size < 0 || size >= 0xFFFE) {
 		return NULL;
 	} else {
 		return malloc_far(size);
@@ -2202,7 +2204,8 @@ void toggle_fullscreen() {
 		sdlperror("SDL_ConvertSurface (toggle_fullscreen)");
 		quit(1);
 	}
-	surface_type* new_onscreen_surface_ = SDL_SetVideoMode(320, 200, 24, flags);
+	//surface_type* new_onscreen_surface_ = SDL_SetVideoMode(320, 200, 24, flags);
+	surface_type* new_onscreen_surface_ = SDL_SetVideoMode(320, 240, 16, SDL_FULLSCREEN | SDL_SWSURFACE | SDL_DOUBLEBUF);
 	if (new_onscreen_surface_ == NULL) {
 		sdlperror("SDL_SetVideoMode (toggle_fullscreen)");
 		quit(1);
@@ -2214,11 +2217,11 @@ void toggle_fullscreen() {
 	}
 	onscreen_surface_ = new_onscreen_surface_;
 	int fullscreen = (flags & SDL_FULLSCREEN) != 0;
-	if (fullscreen) {
+	/*if (fullscreen) {
 		SDL_ShowCursor(SDL_DISABLE);
 	} else {
 		SDL_ShowCursor(SDL_ENABLE);
-	}
+	}*/
 	// The new surface is empty. Copy the old image over onto it.
 	// offscreen_surface is not good instead of temp_surface, because it does not contain the bottom 8 rows (hitpoints).
 	SDL_BlitSurface(temp_surface, NULL, onscreen_surface_, NULL);
@@ -2240,6 +2243,9 @@ void idle() {
 				// Alt-Enter: toggle fullscreen mode
 				toggle_fullscreen();
 			} else {
+                if(event.key.keysym.sym == SDLK_RETURN) { // START
+                    quit(9);
+                }
 				last_key = event.key.keysym.unicode;
 				if (!last_key) {
 					if (event.key.keysym.sym < SDLK_NUMLOCK) {
